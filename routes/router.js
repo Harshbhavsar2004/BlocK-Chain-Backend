@@ -7,7 +7,7 @@ const jwt = require("jsonwebtoken");
 const multer = require("multer");
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
-const Score = require("../models/Score"); // Import the Score model
+
 
 const keysecret = process.env.SECRET_KEY; // JWT Token secret key
 
@@ -261,5 +261,206 @@ router.post("/:id/:token", async (req, res) => {
 });
 
 
+router.post("/score", async (req, res) => {
+    const { Score } = req.body;
+    const token = req.headers.authorization.split(' ')[1]; // Assuming the token is passed as a Bearer token
+
+    try {
+        // Verify the token
+        const decodedToken = jwt.verify(token, keysecret);
+
+        // Find the user by ID and token
+        const validuser = await userdb.findOne({
+            _id: decodedToken._id,
+            "tokens.token": token
+        });
+        
+        if (!validuser) {
+            return res.status(401).json({ message: "Invalid user or token" });
+        }
+
+        // Update the user's Score
+        validuser.Score = Score; // Assuming 'Score' is the field in your user schema to store Score
+        await validuser.save();
+
+        res.status(200).json({ message: "Score updated successfully" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+});
+
+router.get("/score", async (req, res) => {
+    const token = req.headers.authorization.split(' ')[1]; // Assuming the token is passed as a Bearer token
+
+    try {
+        // Verify the token
+        const decodedToken = jwt.verify(token, keysecret);
+
+        // Find the user by ID and token
+        const validuser = await userdb.findOne({
+            _id: decodedToken._id,
+            "tokens.token": token
+        });
+
+        if (!validuser) {
+            return res.status(401).json({ message: "Invalid user or token" });
+        }
+
+        // Return the user's Score
+        res.status(200).json({ Score: validuser.Score });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+});
+
+// router.post("/voice", async (req, res) => {
+//     const { Voice } = req.body;
+//     const token = req.headers.authorization.split(' ')[1];
+//     console.log(token); // Assuming the token is passed as a Bearer token
+
+//     try {
+//         // Verify the token
+//         const decodedToken = jwt.verify(token, keysecret);
+
+//         // Find the user by ID and token, and increment Voice count
+//         const validuser = await userdb.findOneAndUpdate(
+//             {
+//                 _id: decodedToken._id,
+//                 "tokens.token": token
+//             },
+//             { $inc: { Voice: 1 } }, // Increment Voice count by 1
+//             { new: true } // Return the updated document
+//         );
+
+//         if (!validuser) {
+//             return res.status(401).json({ message: "Invalid user or token" });
+//         }
+
+//         res.status(200).json({ message: "Voice updated successfully", Voice: validuser.Voice });
+//     } catch (error) {
+//         console.error(error);
+//         res.status(500).json({ message: "Internal Server Error" });
+//     }
+// });
+
+
+
+router.post("/resetCounts", async (req, res) => {
+    console.log("hlloo");
+    const token = req.headers.authorization.split(' ')[1]; // Assuming the token is passed as a Bearer token
+    try {
+        // Verify the token
+        const decodedToken = jwt.verify(token, keysecret);
+
+        // Find the user by ID and token, and reset counts to 0
+        const validuser = await userdb.findOneAndUpdate(
+            {
+                _id: decodedToken._id,
+                "tokens.token": token
+            },
+            { $set: { left: 0, right: 0, Voice: 0 } }, // Reset counts to 0
+            { new: true } // Return the updated document
+        );
+
+        if (!validuser) {
+            return res.status(401).json({ message: "Invalid user or token" });
+        }
+
+        res.status(200).json({ message: "Counts reset successfully", left: 0, right: 0, Voice: 0 });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+});
+
+router.post("/left", async (req, res) => {
+    const { left } = req.body;
+    console.log(left);
+    const token = req.headers.authorization.split(' ')[1];
+    console.log(token);// Assuming the token is passed as a Bearer token
+
+    try {
+        // Verify the token
+        const decodedToken = jwt.verify(token, keysecret);
+
+        // Find the user by ID and token
+        const validuser = await userdb.findOneAndUpdate(
+            {
+                _id: decodedToken._id,
+                "tokens.token": token
+            },
+            { $inc: { left: 1 } }, // Increment leftCount by 1
+            { new: true } // Return the updated document
+        );
+
+        if (!validuser) {
+            return res.status(401).json({ message: "Invalid user or token" });
+        }
+
+        res.status(200).json({ message: "Left count updated successfully", left: validuser.left });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+});
+
+router.post("/right", async (req, res) => {
+    const { right } = req.body;
+    const token = req.headers.authorization.split(' ')[1]; // Assuming the token is passed as a Bearer token
+
+    try {
+        // Verify the token
+        const decodedToken = jwt.verify(token, keysecret);
+
+        // Find the user by ID and token
+        const validuser = await userdb.findOneAndUpdate(
+            {
+                _id: decodedToken._id,
+                "tokens.token": token
+            },
+            { $inc: { right: 1 } }, // Increment rightCount by 1
+            { new: true } // Return the updated document
+        );
+
+        if (!validuser) {
+            return res.status(401).json({ message: "Invalid user or token" });
+        }
+
+        res.status(200).json({ message: "Right count updated successfully", right: validuser.right });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+});
+router.post("/voice", async (req, res) => {
+    const { Voice } = req.body;
+  const token = req.headers.authorization.split(" ")[1];
+
+  try {
+    // Verify the token
+    const decodedToken = jwt.verify(token, process.env.SECRET_KEY);
+
+    // Find the user by ID and token, and increment Voice count
+    const validuser = await userdb.findOneAndUpdate(
+      {
+        _id: decodedToken._id,
+        "tokens.token": token,
+      },
+      { $inc: { Voice: 1 } },
+      { new: true }
+    );
+
+    if (!validuser) {
+      return res.status(401).json({ message: "Invalid user or token" });
+    }
+
+    res.status(200).json({ message: "Voice updated successfully", Voice: validuser.Voice });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
 
 module.exports = router;

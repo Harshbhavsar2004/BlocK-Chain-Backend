@@ -1,28 +1,70 @@
 require("dotenv").config();
 const express = require("express");
 const app = express();
-require("./db/conn");
-const router = require("./routes/router");
+const http = require("http").Server(app); // Use the HTTP server created by Express
+const io = require("socket.io")(http);
 const cors = require("cors");
-const cookiParser = require("cookie-parser")
-const port = 3000;
+const cookiParser = require("cookie-parser");
+const userdb = require("./models/userSchema");
+const jwt = require("jsonwebtoken");
+const keysecret = process.env.SECRET_KEY; // JWT Token secret key
 
-
-// app.get("/",(req,res)=>{
-//     res.status(201).json("server created")
-// });
-
-app.use(cors({ origin: process.env.BASE_URL , credentials: true }));
+require("./db/conn");
+// Middleware
+app.use(cors({ origin: process.env.BASE_URL, credentials: true }));
 app.use(express.json());
 app.use(cookiParser());
+
+// Routes
+const router = require("./routes/router");
 app.use(router);
 
-app.listen(port,()=>{
-    console.log(`server start at port no : ${port}`);
-})
+// Default route
+app.get('/', (req, res) => {
+  res.send('Server is running...')
+});
+const checkValuesGreaterThan50 = async (token) => {
+  try {
+    if (!token) {
+      throw new Error('Token not provided');
+    }
 
-app.get("/",(req,res)=>{
-    res.send("server created")
-})
+    // Verify the token
+    const decodedToken = jwt.verify(token, keysecret);
 
+    const users = await userdb.find(); // Assuming this fetches all users
+    const usersWithHighValues = users.filter(user => {
+      return user.left > 50 || user.right > 50 || user.Voice > 50;
+    });
+    return usersWithHighValues.length > 0;
+  } catch (error) {
+    console.error('Error checking values:', error);
+    return false;
+  }
+};
 
+// Socket.IO connection handling
+io.on('connection', (socket) => {
+  console.log('Client connected');
+
+  // Receive token from the client when connecting
+  socket.on('verifyToken', async (token) => {
+    try {
+      const result = await checkValuesGreaterThan50(token);
+      socket.emit('valuesCheck', result);
+    } catch (error) {
+      console.error('Error verifying token:', error);
+      socket.emit('valuesCheck', false); // Send false in case of error
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Client disconnected');
+  });
+});
+
+// Start the server
+const port = process.env.PORT || 3000;
+http.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
+});

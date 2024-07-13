@@ -82,6 +82,18 @@ const userSchema = new mongoose.Schema({
     Score: {
         type: Number,
         default: 0,
+    },
+    Voice:{
+        type:Number,
+        default:0,
+    },
+    left:{
+        type:Number,
+        default:0,
+    },
+    right:{
+        type:Number,
+        default:0,
     }
 });
 
